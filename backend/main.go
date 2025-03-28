@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
@@ -22,8 +23,14 @@ func main() {
 	// エンドポイントの定義
 	r.GET("/api/hello", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "Hello, World!"})
+			"message": "Hello,燈哉!"})
 	})
+
+	// サーバーの起動（エラーハンドリングを追加）
+	log.Println("サーバーを開始します...")
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("サーバー起動エラー: %v", err)
+	}
 
 	// サーバーの起動
 	r.GET(":8080")

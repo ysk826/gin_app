@@ -11,6 +11,10 @@ RUN npm install
 # ソースコードをコピー
 COPY . .
 
+# 必要なディレクトリが存在することを確認
+RUN mkdir -p public
+RUN mkdir -p src
+
 EXPOSE 3000
 
 CMD ["npm", "start"]
