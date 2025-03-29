@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"gin_app/config"
+	"path/filepath"
 
 	"log"
 	"os"
@@ -25,7 +26,8 @@ func init() {
 	}
 
 	// DB接続
-	db, err = sql.Open(config.Config.SQLdriver, config.Config.DbName)
+	dbPath := filepath.Join(dbDir, config.Config.DbName)
+	db, err = sql.Open(config.Config.SQLdriver, dbPath)
 	if err != nil {
 		log.Fatalln("DB接続に失敗しました:", err)
 	}

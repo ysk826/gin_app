@@ -7,7 +7,7 @@ services:
       - GIN_MODE=debug
     volumes:
       # ローカルのソースコードをコンテナにマウント
-      - ./backend:/app
+      - ./backend:/gin_app/backend
       # ホットリロード時にダウンロードされたGoモジュールを保持
       - go-modules:/go/pkg/mod
     # コンテナが落ちても自動的に再起動
