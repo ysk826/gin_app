@@ -5,6 +5,8 @@ go 1.23
 require (
 	github.com/gin-contrib/cors v1.5.0
 	github.com/gin-gonic/gin v1.9.1
+	github.com/mattn/go-sqlite3 v1.14.24
+	gopkg.in/go-ini/ini.v1 v1.67.0
 )
 
 require (

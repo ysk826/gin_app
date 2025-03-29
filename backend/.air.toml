@@ -4,7 +4,7 @@ tmp_dir = "tmp"
 
 [build]
 # 監視対象のファイル
-include_ext = ["go", "json"]
+include_ext = ["go", "json", "ini"]
 # main.goをビルド
 cmd = "go build -o ./tmp/app ."
 # ビルド後に実行するコマンド
