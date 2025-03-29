@@ -1,0 +1,30 @@
+# .air.toml
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# 監視対象のファイル
+include_ext = ["go", "json"]
+# main.goをビルド
+cmd = "go build -o ./tmp/app ."
+# ビルド後に実行するコマンド
+bin = "./tmp/app"
+# ファイル変更を検知したらリビルド
+delay = 1000
+# クラッシュしたら再起動
+kill_delay = "0s"
+
+[log]
+# 詳細なログ
+time = true
+
+[color]
+# 色付きの出力
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[misc]
+# ビルド時にClean
+clean_on_exit = true

@@ -5,6 +5,13 @@ services:
       - "8080:8080"
     environment:
       - GIN_MODE=debug
+    volumes:
+      # ローカルのソースコードをコンテナにマウント
+      - ./backend:/app
+      # ホットリロード時にダウンロードされたGoモジュールを保持
+      - go-modules:/go/pkg/mod
+    # コンテナが落ちても自動的に再起動
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -14,3 +21,16 @@ services:
       - backend
     environment:
       - REACT_APP_API_URL=http://localhost:8080
+      # Webpackのホットリロードを有効に
+      - WATCHPACK_POLLING=true
+    volumes:
+      # ローカルのソースコードをコンテナにマウント
+      - ./frontend:/app
+      # node_modulesは除外（ローカルとコンテナで競合しないように）
+      - /app/node_modules
+    # コンテナが落ちても自動的に再起動
+    restart: unless-stopped
+
+# Goのモジュールキャッシュ用ボリューム
+volumes:
+  go-modules:

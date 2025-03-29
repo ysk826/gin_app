@@ -8,8 +8,8 @@ COPY package*.json ./
 # 依存関係をインストール
 RUN npm install
 
-# ソースコードをコピー
-COPY . .
+# ソースコードをコピーせず、ボリュームマウントを使用する
+# COPY . .
 
 # 必要なディレクトリが存在することを確認
 RUN mkdir -p public
