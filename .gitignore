@@ -1,0 +1,3 @@
+# 一時ファイルを無視
+backend/tmp/
+backend/tmp/app
