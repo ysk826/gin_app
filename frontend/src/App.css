@@ -1,14 +1,32 @@
+/* frontend/src/App.css */
 .App {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 .App-header {
-    background-color: #282c34;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
+    background-color: #4CAF50;
+    padding: 20px;
     color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.App-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+main {
+    flex: 1;
+    padding: 20px 0;
+}
+
+footer {
+    background-color: #f8f8f8;
+    padding: 15px;
+    font-size: 0.9rem;
+    color: #666;
+    border-top: 1px solid #ddd;
 }
