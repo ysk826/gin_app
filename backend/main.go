@@ -34,7 +34,7 @@ func main() {
 	// 日記のエンドポイント
 	api.GET("/diary", getDiaryEntriesByDate)
 	api.POST("/diary", createDiaryEntry)
-	//api.PUT("/diary/:id", updateDiaryEntry)
+	api.PUT("/diary/:id", updateDiaryEntry)
 
 	// サーバーの起動（エラーハンドリングを追加）
 	log.Println("サーバーを開始します...")
