@@ -81,3 +81,65 @@ func getDiaryEntriesByDate(c *gin.Context) {
 
 	c.JSON(http.StatusOK, entries)
 }
+
+// 日記のエントリを作成するハンドラ
+func createDiaryEntry(c *gin.Context) {
+	var entry DiaryEntry
+	if err := c.ShouldBindJSON(&entry); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無効なリクエスト形式です"})
+		return
+	}
+
+	// 現在の時刻を取得
+	now := time.Now()
+
+	// データベースにエントリを挿入
+	result, err := db.Exec(
+		fmt.Sprintf(`INSERT INTO %s (
+							time,
+							milk,
+							urine,
+							poop,
+							created_at)
+					VALUES (?, ?, ?, ?, ?)`, tableDiary),
+		entry.Time, entry.Milk, entry.Urine, entry.Poop, now)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "データの保存に失敗しました"})
+		return
+	}
+
+	// 挿入されたエントリのIDを取得
+	id, _ := result.LastInsertId()
+	entry.ID = int(id)
+	entry.CreatedAt = now
+
+	c.JSON(http.StatusCreated, entry)
+}
+
+// 日記のエントリを更新するハンドラ
+func updateDiaryEntry(c *gin.Context) {
+	id := c.Param("id")
+
+	var entry DiaryEntry
+	if err := c.ShouldBindJSON(&entry); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無効なリクエスト形式です"})
+		return
+	}
+
+	// データベースにエントリを更新
+	_, err := db.Exec(
+		fmt.Sprintf(`UPDATE %s SET
+						milk = ?,
+						urine = ?,
+						poop = ?
+					WHERE id = ?`, tableDiary),
+		entry.Milk, entry.Urine, entry.Poop, id)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "データの更新に失敗しました"})
+		return
+	}
+
+	// 更新されたエントリを取得
+
+}
