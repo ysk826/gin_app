@@ -31,7 +31,4 @@ func main() {
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("サーバー起動エラー: %v", err)
 	}
-
-	// サーバーの起動
-	r.GET(":8080")
 }
