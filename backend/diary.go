@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
@@ -141,5 +142,111 @@ func updateDiaryEntry(c *gin.Context) {
 	}
 
 	// 更新されたエントリを取得
+	var updateEntry DiaryEntry
+	err = db.QueryRow(
+		fmt.Sprintf(`SELECT
+						id,
+						time,
+						milk,
+						urine,
+						poop,
+						created_at
+					FROM %s
+					WHERE id = ?`, tableDiary), id,
+	).Scan(&updateEntry.ID,
+		&updateEntry.Time,
+		&updateEntry.Milk,
+		&updateEntry.Urine,
+		&updateEntry.Poop,
+		&updateEntry.CreatedAt)
 
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "エントリが見つかりません"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "データの取得に失敗しました"})
+		return
+	}
+
+	c.JSON(http.StatusOK, updateEntry)
+}
+
+// 特定の日の全ての時間帯のエントリーを取得するハンドラ（存在しない時間帯も含む）
+func getFullDayDiaryEntries(c *gin.Context) {
+	dateStr := c.Query("date")
+
+	var date time.Time
+	var err error
+
+	if dateStr == "" {
+		// 日付の指定がない場合は、現在の日付を使用
+		date = time.Now()
+	} else {
+		// クエリのパラメータから日付を取得
+		date, err = time.Parse("2006-01-02", dateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "無効な日付形式です"})
+			return
+		}
+	}
+
+	// 指定された日付の始まりと終わり
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
+
+	// 24時間分のエントリーを準備
+	entries := make([]DiaryEntry, 24)
+	for i := 0; i < 24; i++ {
+		entryTime := startOfDay.Add(time.Duration(i) * time.Hour)
+		entries[i] = DiaryEntry{
+			Time:  entryTime,
+			Milk:  0,
+			Urine: 0,
+			Poop:  0,
+		}
+	}
+
+	// データベースから日記のエントリを取得
+	rows, err := db.Query(
+		fmt.Sprintf(`SELECT
+						id,
+						time,
+						milk,
+						urine,
+						poop,
+						created_at FROM %s
+					WHERE
+						date(time) = date(?)
+					ORDER BY time`, tableDiary), startOfDay)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "データの取得に失敗しました"})
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var entry DiaryEntry
+		var timeStr string
+		var createdAtStr string
+
+		err := rows.Scan(&entry.ID, &timeStr, &entry.Milk, &entry.Urine, &entry.Poop, &createdAtStr)
+		if err != nil {
+			continue
+		}
+
+		// 文字列をtime.Time型に変換
+		entryTime, err := time.Parse("2006-01-02 15:04:05", timeStr)
+		if err != nil {
+			continue
+		}
+
+		// 該当する時間帯のエントリーを更新
+		hour := entryTime.Hour()
+		if hour >= 0 && hour < 24 {
+			entry.Time = entryTime
+			entry.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
+			entries[hour] = entry
+		}
+	}
+	c.JSON(http.StatusOK, entries)
 }
