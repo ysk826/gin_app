@@ -19,7 +19,7 @@ type DiaryEntry struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// 日付で日記のエントリを取得するハンドラ
+// 日付で日記のエントリーを取得するハンドラ
 func getDiaryEntriesByDate(c *gin.Context) {
 	dateStr := c.Query("date")
 
@@ -83,7 +83,7 @@ func getDiaryEntriesByDate(c *gin.Context) {
 	c.JSON(http.StatusOK, entries)
 }
 
-// 日記のエントリを作成するハンドラ
+// 日記のエントリーを作成するハンドラ
 func createDiaryEntry(c *gin.Context) {
 	var entry DiaryEntry
 	if err := c.ShouldBindJSON(&entry); err != nil {
@@ -117,7 +117,7 @@ func createDiaryEntry(c *gin.Context) {
 	c.JSON(http.StatusCreated, entry)
 }
 
-// 日記のエントリを更新するハンドラ
+// 日記のエントリーを更新するハンドラ
 func updateDiaryEntry(c *gin.Context) {
 	id := c.Param("id")
 
@@ -169,6 +169,88 @@ func updateDiaryEntry(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, updateEntry)
+}
+
+// 指定された時間の日記エントリーを作成または更新するハンドラ
+func createOrUpdateTimeEntry(c *gin.Context) {
+	var entry DiaryEntry
+	if err := c.ShouldBindJSON(&entry); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無効なリクエスト形式です"})
+		return
+	}
+
+	// 指定された時間のエントリーが存在するか確認
+	var existingID int
+	err := db.QueryRow(
+		fmt.Sprintf(`SELECT id FROM %s
+					WHERE strftime('%%H:%%M', ?)
+					AND date(time) = date(?)`, tableDiary),
+		entry.Time, entry.Time).Scan(&existingID)
+
+	if err == sql.ErrNoRows {
+		// エントリーが存在しない場合は新規作成
+		now := time.Now()
+		result, err := db.Exec(
+			fmt.Sprintf(`INSERT INTO %s (
+							time,
+							milk,
+							urine,
+							poop,
+							created_at)
+					VALUES (?, ?, ?, ?, ?)`, tableDiary),
+			entry.Time, entry.Milk, entry.Urine, entry.Poop, now)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "データの保存に失敗しました"})
+			return
+		}
+
+		id, _ := result.LastInsertId()
+		entry.ID = int(id)
+		entry.CreatedAt = now
+
+		c.JSON(http.StatusCreated, entry)
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "データの確認に失敗しました"})
+	} else {
+		// エントリーが存在する場合は更新
+		_, err := db.Exec(
+			fmt.Sprintf(`UPDATE %s SET
+							milk = ?,
+							urine = ?,
+							poop = ?
+						WHERE id = ?`, tableDiary),
+			entry.Milk, entry.Urine, entry.Poop, existingID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "データの更新に失敗しました"})
+			return
+		}
+
+		// 更新されたエントリを取得
+		var updateEntry DiaryEntry
+		err = db.QueryRow(
+			fmt.Sprintf(`SELECT
+							id,
+							time,
+							milk,
+							urine,
+							poop,
+							created_at
+						FROM %s
+						WHERE id = ?`, tableDiary), existingID,
+		).Scan(&updateEntry.ID,
+			&updateEntry.Time,
+			&updateEntry.Milk,
+			&updateEntry.Urine,
+			&updateEntry.Poop,
+			&updateEntry.CreatedAt)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "データの取得に失敗しました"})
+			return
+		}
+
+		c.JSON(http.StatusOK, updateEntry)
+	}
 }
 
 // 特定の日の全ての時間帯のエントリーを取得するハンドラ（存在しない時間帯も含む）
