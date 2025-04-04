@@ -3,8 +3,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"gin_app/config"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -94,6 +96,9 @@ func createDiaryEntry(c *gin.Context) {
 
 	// 現在の時刻を取得
 	now := time.Now()
+	// タイムゾーンなしの形式でフォーマット
+	formattedTime := entry.Time.Format(time.RFC3339)
+	formattedNow := time.Now().Format(time.RFC3339)
 
 	// データベースにエントリを挿入
 	result, err := db.Exec(
@@ -104,7 +109,7 @@ func createDiaryEntry(c *gin.Context) {
 							poop,
 							created_at)
 					VALUES (?, ?, ?, ?, ?)`, tableDiary),
-		entry.Time, entry.Milk, entry.Urine, entry.Poop, now)
+		formattedTime, entry.Milk, entry.Urine, entry.Poop, formattedNow)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "データの保存に失敗しました"})
 		return
@@ -257,6 +262,7 @@ func createOrUpdateTimeEntry(c *gin.Context) {
 // 特定の日の全ての時間帯のエントリーを取得するハンドラ（存在しない時間帯も含む）
 func getFullDayDiaryEntries(c *gin.Context) {
 	dateStr := c.Query("date")
+	log.Printf("指定された日付: %s", dateStr) // todo
 
 	var date time.Time
 	var err error
@@ -275,6 +281,7 @@ func getFullDayDiaryEntries(c *gin.Context) {
 
 	// 指定された日付の始まりと終わり
 	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
+	log.Printf("検索する日付: %s", startOfDay.Format("2006-01-02")) // todo
 
 	// 24時間分のエントリーを準備
 	entries := make([]DiaryEntry, 24)
@@ -290,24 +297,34 @@ func getFullDayDiaryEntries(c *gin.Context) {
 
 	// データベースから日記のエントリを取得
 	// 日付の文字列を取得
-	dateString := startOfDay.Format("2006-01-02")
+	dateString := startOfDay.Format("2006-01-02") + "%"
+	log.Printf("SQL検索パターン: %s", dateString) // todo
+
+	// todo　削除
+	// diary.goのgetFullDayDiaryEntries関数内で、クエリ部分を次のように修正
+	dbPath := filepath.Join(config.Config.DbDir, config.Config.DbName)
+	log.Printf("使用するデータベースファイル: %s", dbPath)
+	// todo 削除
+	// RFC3339形式の日付部分だけを比較
 	rows, err := db.Query(
-		fmt.Sprintf(`SELECT
-						id,
-						time,
-						milk,
-						urine,
-						poop,
-						created_at FROM %s
-					WHERE
-						time LIKE ?
-					ORDER BY time`, tableDiary), dateString+"%")
+		fmt.Sprintf(`SELECT id,
+							time,
+							milk,
+							urine,
+							poop,
+							created_at FROM %s
+                WHERE substr(time, 1, 10) = ?`, tableDiary),
+		startOfDay.Format("2006-01-02"))
 
 	if err != nil {
+		log.Printf("データベース検索エラー: %v", err) // todo
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "データの取得に失敗しました"})
 		return
 	}
 	defer rows.Close()
+
+	// 実データの数をカウント
+	dataCount := 0
 
 	for rows.Next() {
 		var entry DiaryEntry
@@ -316,29 +333,48 @@ func getFullDayDiaryEntries(c *gin.Context) {
 
 		err := rows.Scan(&entry.ID, &timeStr, &entry.Milk, &entry.Urine, &entry.Poop, &createdAtStr)
 		if err != nil {
+			log.Printf("行のスキャンエラー: %v", err) // todo
 			continue
 		}
 
-		// 文字列をtime.Time型に変換
-		entryTime, err := time.Parse("2006-01-02 15:04:05", timeStr)
+		// タイムゾーン情報を含む可能性がある時間文字列を解析
+		entryTime, err := time.Parse(time.RFC3339, timeStr)
 		if err != nil {
-			continue
+			// RFC3339形式でダメなら、他の形式も試す
+			entryTime, err = time.Parse("2006-01-02T15:04:05-07:00", timeStr)
+			if err != nil {
+				entryTime, err = time.Parse("2006-01-02 15:04:05", timeStr)
+				if err != nil {
+					log.Printf("時間解析エラー: %v, timeStr: %s", err, timeStr)
+					continue
+				}
+			}
 		}
+
+		log.Printf("データ発見: 時間=%s, id=%d, milk=%d, urine=%d, poop=%d",
+			entryTime.Format("2006-01-02 15:04:05"), entry.ID, entry.Milk, entry.Urine, entry.Poop)
+		dataCount++
 
 		// 該当する時間帯のエントリーを更新
 		hour := entryTime.Hour()
 		if hour >= 0 && hour < 24 {
-			entry.Time = entryTime
-			entry.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
+			entry.Time = entries[hour].Time // 元の時間を保持
+			entry.CreatedAt, _ = time.Parse("2006-01-02 15:04:05-07:00", createdAtStr)
 			entries[hour] = entry
+			// todo
+			log.Printf("時間 %02d:00 を更新: milk=%d, urine=%d, poop=%d",
+				hour, entry.Milk, entry.Urine, entry.Poop)
 		}
 	}
 
+	log.Printf("合計 %d 件のデータを見つけました", dataCount)
 	log.Printf("返却するデータ数: %d", len(entries))
+
+	// 値を持つエントリをログに出力
 	for i, entry := range entries {
 		if entry.Milk != 0 || entry.Urine != 0 || entry.Poop != 0 {
-			log.Printf("インデックス %d - 時間: %s, ミルク: %d, 尿: %d, 便: %d",
-				i, entry.Time.Format("2006-01-02 15:04:05"), entry.Milk, entry.Urine, entry.Poop)
+			log.Printf("エントリ %02d:00 - milk=%d, urine=%d, poop=%d",
+				i, entry.Milk, entry.Urine, entry.Poop)
 		}
 	}
 

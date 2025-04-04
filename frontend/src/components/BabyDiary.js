@@ -31,6 +31,17 @@ const BabyDiary = () => {
             }
 
             const data = await response.json();
+            console.log("APIから取得したデータ:", data);
+
+            // データ内に値のあるエントリを確認
+            data.forEach((entry, index) => {
+                if (entry.milk || entry.urine || entry.poop) {
+                    console.log(
+                        `時間 ${index}:00 - milk:${entry.milk}, urine:${entry.urine}, poop:${entry.poop}`
+                    );
+                }
+            });
+
             setEntries(data);
         } catch (err) {
             console.error("エラー:", err);
