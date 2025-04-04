@@ -183,7 +183,7 @@ func createOrUpdateTimeEntry(c *gin.Context) {
 	var existingID int
 	err := db.QueryRow(
 		fmt.Sprintf(`SELECT id FROM %s
-					WHERE strftime('%%H:%%M', ?)
+					WHERE strftime('%%H:%%M', time) = strftime('%%H:%%M', ?)
 					AND date(time) = date(?)`, tableDiary),
 		entry.Time, entry.Time).Scan(&existingID)
 
