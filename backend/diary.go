@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -288,6 +289,8 @@ func getFullDayDiaryEntries(c *gin.Context) {
 	}
 
 	// データベースから日記のエントリを取得
+	// 日付の文字列を取得
+	dateString := startOfDay.Format("2006-01-02")
 	rows, err := db.Query(
 		fmt.Sprintf(`SELECT
 						id,
@@ -297,8 +300,8 @@ func getFullDayDiaryEntries(c *gin.Context) {
 						poop,
 						created_at FROM %s
 					WHERE
-						date(time) = date(?)
-					ORDER BY time`, tableDiary), startOfDay)
+						time LIKE ?
+					ORDER BY time`, tableDiary), dateString+"%")
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "データの取得に失敗しました"})
@@ -330,5 +333,14 @@ func getFullDayDiaryEntries(c *gin.Context) {
 			entries[hour] = entry
 		}
 	}
+
+	log.Printf("返却するデータ数: %d", len(entries))
+	for i, entry := range entries {
+		if entry.Milk != 0 || entry.Urine != 0 || entry.Poop != 0 {
+			log.Printf("インデックス %d - 時間: %s, ミルク: %d, 尿: %d, 便: %d",
+				i, entry.Time.Format("2006-01-02 15:04:05"), entry.Milk, entry.Urine, entry.Poop)
+		}
+	}
+
 	c.JSON(http.StatusOK, entries)
 }
