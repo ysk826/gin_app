@@ -1,6 +1,6 @@
 # 一時ファイルを無視
 backend/tmp/
-backend/tmp/app
+backend/data/
 
 # リポジトリをまとめたファイルを無視
 repomix-output.txt
