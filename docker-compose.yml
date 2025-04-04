@@ -8,8 +8,9 @@ services:
     volumes:
       # ローカルのソースコードをコンテナにマウント
       - ./backend:/gin_app/backend
-      # データベースディレクトリをホストにマウント
-      - ./db-data:/gin_app/backend/data
+      - type: bind
+        source: ${PWD}/db-data
+        target: /gin_app/backend/data
       # ホットリロード時にダウンロードされたGoモジュールを保持
       - go-modules:/go/pkg/mod
     # コンテナが落ちても自動的に再起動
