@@ -2,5 +2,8 @@
 backend/tmp/
 backend/data/
 
+# ホスト側DB
+db-data
+
 # リポジトリをまとめたファイルを無視
 repomix-output.txt
