@@ -7,3 +7,5 @@ db-data
 
 # リポジトリをまとめたファイルを無視
 repomix-output.txt
+
+frontend/.DS_Store
